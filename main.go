@@ -110,9 +110,12 @@ func main() {
 	}
 
 	acmeCli := cert.NewClient()
-	ctx := context.TODO()
+	ctx := context.Background()
 	err = acmeCli.LoadAccount(ctx, accountPath)
-	if err != nil && !mustLoadAccount {
+	if err != nil {
+		if mustLoadAccount {
+			log.Fatalf("load account failed: %v", err)
+		}
 		log.Printf("account not found (%s), register it", err.Error())
 		err = acmeCli.RegisterAccount(ctx, mustLoadEnv("EMAIL"))
 		if err != nil {
