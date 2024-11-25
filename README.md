@@ -2,6 +2,8 @@
 
 [![Test](https://github.com/yin1999/aliyun-auto-cert/actions/workflows/test.yml/badge.svg)](https://github.com/yin1999/aliyun-auto-cert/actions/workflows/test.yml)
 
+[English](README.md) | [简体中文](README_zh-CN.md)
+
 This is a simple tool to help you fresh your TLS certificate which deployed on Aliyun CDN automatically.
 
 ## Usage
@@ -29,6 +31,7 @@ export $(grep -v '^#' .env | xargs)
 
 # run the program
 ./auto-cert
+# the ACME account will be saved with the file specified by `ACME_ACCOUNT_FILE` environment variable
 ```
 
 ### Service Mode
