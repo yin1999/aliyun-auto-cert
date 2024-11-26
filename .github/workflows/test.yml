@@ -19,7 +19,7 @@ jobs:
         go-version-file: go.mod
 
     - name: Build
-      run: go build -v ./...
+      run: go build -v main.go
 
   test:
     runs-on: ubuntu-latest
