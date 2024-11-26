@@ -7,6 +7,8 @@ import (
 	"auto-cert/pkg/ref"
 	"auto-cert/pkg/tld"
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -21,17 +23,29 @@ const (
 )
 
 func main() {
-	ak := mustLoadEnv("ACCESS_KEY")
-	secret := mustLoadEnv("ACCESS_SECRET")
+	var (
+		forceRenew        = false
+		createAcmeAccount = false
+	)
+	flag.BoolVar(&forceRenew, "f", false, "force renew")
+	flag.BoolVar(&createAcmeAccount, "a", false, "create acme account")
 
-	cfg := &openapi.Config{
-		AccessKeyId:     ref.GetPointer(ak),
-		AccessKeySecret: ref.GetPointer(secret),
-	}
 	fullDomain := mustLoadEnv("FULL_DOMAIN")
 	accountPath := loadEnvOr("ACCOUNT_FILE", "./account.json")
 	tldPlusOne := loadEnvOr("DOMAIN", "")
 	mustLoadAccount := loadEnvOr("MUST_LOAD_ACCOUNT", "false") == "true"
+
+	if createAcmeAccount {
+		// check if account exists
+		log.Println("creating acme account")
+		acmeCli := cert.NewClient()
+		err := createAndStoreAcmeAccount(context.Background(), acmeCli, accountPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	subDomain := ""
 	if tldPlusOne == "" {
 		tld, err := tld.ParseDomain(fullDomain)
@@ -52,6 +66,12 @@ func main() {
 		subDomain = strings.TrimSuffix(subDomain, ".")
 	}
 
+	ak := mustLoadEnv("ACCESS_KEY")
+	secret := mustLoadEnv("ACCESS_SECRET")
+	cfg := &openapi.Config{
+		AccessKeyId:     ref.GetPointer(ak),
+		AccessKeySecret: ref.GetPointer(secret),
+	}
 	cdnCli, err := cdn.CreateClient(cfg)
 	if err != nil {
 		log.Fatalf("create cdn client failed: %v", err)
@@ -117,17 +137,10 @@ func main() {
 			log.Fatalf("load account failed: %v", err)
 		}
 		log.Printf("account not found (%s), register it", err.Error())
-		err = acmeCli.RegisterAccount(ctx, mustLoadEnv("EMAIL"))
+		err = createAndStoreAcmeAccount(ctx, acmeCli, accountPath)
 		if err != nil {
-			log.Fatalf("register account failed: %v", err)
+			log.Fatal(err)
 		}
-		log.Printf("account registered")
-		log.Printf("Storing account")
-		err = acmeCli.StoreAccount(ctx, accountPath)
-		if err != nil {
-			log.Fatalf("store account failed: %v", err)
-		}
-		log.Printf("account stored")
 	}
 
 	c, err := acmeCli.GenerateCert(ctx, fullDomain, cert.KeyECDSA, resolveDnsChallenge)
@@ -141,6 +154,26 @@ func main() {
 		log.Fatalf("set certificate failed: %v", err)
 	}
 	log.Printf("certificate set")
+}
+
+func createAndStoreAcmeAccount(ctx context.Context, acmeCli *cert.Client, accountPath string) error {
+	err := acmeCli.RegisterAccount(ctx, mustLoadEnv("EMAIL"))
+	if err != nil {
+		return fmt.Errorf("register account failed: %w", err)
+	}
+	log.Print("account registered\n")
+	log.Print("Storing account\n")
+	data, err := acmeCli.ExportAccount(ctx)
+	if err != nil {
+		return fmt.Errorf("export account failed: %w", err)
+	}
+	err = os.WriteFile(accountPath, data, 0600)
+	if err != nil {
+		log.Printf("failed to store account, please store it manually, account content:\n%s\n", string(data))
+		return fmt.Errorf("store account failed: %w", err)
+	}
+	log.Printf("account stored at %s\n", accountPath)
+	return nil
 }
 
 func mustLoadEnv(key string) string {
