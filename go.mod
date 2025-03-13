@@ -1,7 +1,6 @@
 module auto-cert
 
-go 1.22
-toolchain go1.23.7
+go 1.24
 
 require (
 	github.com/alibabacloud-go/alidns-20150109/v4 v4.5.7
