@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/alibabacloud-go/alidns-20150109/v4 v4.5.7
+	github.com/alibabacloud-go/cas-20200407/v4 v4.0.0
 	github.com/alibabacloud-go/cdn-20180510/v5 v5.2.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.0.10
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.7

@@ -68,6 +68,8 @@ func (c *Client) QueryDomainCertificate(domain string) (*CertInfo, error) {
 		DomainName: ref.DerefOrDefault(certInfo.DomainName),
 		Name:       ref.DerefOrDefault(certInfo.CertName),
 		Enabled:    ref.DerefOr(certInfo.ServerCertificateStatus, statusOff) == statusOn,
+		Id:         ref.DerefOrDefault(certInfo.CertId),
+		Type:       ref.DerefOrDefault(certInfo.CertType),
 		Region:     ref.DerefOrDefault(certInfo.CertRegion),
 	}
 	// format: 2018-06-03T22:03:39Z
