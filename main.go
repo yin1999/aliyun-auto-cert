@@ -45,7 +45,7 @@ func main() {
 	)
 	cfg := &config{}
 	flag.BoolVar(&forceRenew, "f", false, "force renew")
-	flag.BoolVar(&createAcmeAccount, "a", false, "create acme account")
+	flag.BoolVar(&createAcmeAccount, "a", false, "create or update acme account (the account key will be updated)")
 	flag.StringVar(&cfg.email, "e", env.GetString("EMAIL", ""), "email for acme account")
 	flag.StringVar(&cfg.fullDomain, "fd", env.GetString("FULL_DOMAIN", ""), "the full domain to generate certificate")
 	flag.StringVar(&cfg.tldPlusOne, "tp", env.GetString("TLD_PLUS_ONE", ""), "tld plus one")
@@ -53,6 +53,7 @@ func main() {
 	flag.BoolVar(&mustLoadAccount, "m", env.GetBool("MUST_LOAD_ACCOUNT", false), "must load account")
 	flag.StringVar(&cfg.accessKey, "ak", env.GetString("ACCESS_KEY", ""), "access key")
 	flag.StringVar(&cfg.accessSecret, "sk", env.GetString("ACCESS_SECRET", ""), "access secret")
+	flag.Parse()
 
 	if cfg.email == "" {
 		log.Fatal("email is empty")
@@ -60,14 +61,7 @@ func main() {
 	if createAcmeAccount {
 		// check if account exists
 		acmeCli := cert.NewClient()
-		if err := acmeCli.LoadAccount(ctx, cfg.accountPath); err == nil {
-			log.Print("acme account exists, skip creating acme account\n")
-			return
-		}
-
-		log.Print("creating acme account\n")
-		err := createAndStoreAcmeAccount(ctx, acmeCli, cfg)
-		if err != nil {
+		if err := upcreateAndStoreAcmeAccount(ctx, acmeCli, cfg); err != nil {
 			log.Fatal(err)
 		}
 		return
@@ -107,7 +101,7 @@ func main() {
 			log.Fatalf("load account failed: %v", err)
 		}
 		log.Printf("account not found (%v), register it\n", err)
-		err = createAndStoreAcmeAccount(ctx, acmeCli, cfg)
+		err = upcreateAndStoreAcmeAccount(ctx, acmeCli, cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -202,12 +196,22 @@ func resolveDnsChallengeFunc(dnsCli *dns.Client, cfg *config) func(ctx context.C
 	}
 }
 
-func createAndStoreAcmeAccount(ctx context.Context, acmeCli *cert.Client, cfg *config) error {
-	err := acmeCli.RegisterAccount(ctx, cfg.email)
-	if err != nil {
-		return fmt.Errorf("register account failed: %w", err)
+// upcreateAndStoreAcmeAccount will create or update the acme account and store the account key to file
+func upcreateAndStoreAcmeAccount(ctx context.Context, acmeCli *cert.Client, cfg *config) error {
+	if err := acmeCli.LoadAccount(ctx, cfg.accountPath); err == nil {
+		log.Print("acme account exists, updating acme account key\n")
+		err = acmeCli.AccountKeyRollover(ctx)
+		if err != nil {
+			return fmt.Errorf("update account key failed: %w", err)
+		}
+	} else {
+		log.Print("creating acme account\n")
+		err = acmeCli.RegisterAccount(ctx, cfg.email)
+		if err != nil {
+			return fmt.Errorf("register account failed: %w", err)
+		}
 	}
-	log.Print("account registered\n")
+	log.Print("account registered/updated\n")
 	log.Print("Storing account\n")
 	data, err := acmeCli.ExportAccount(ctx)
 	if err != nil {

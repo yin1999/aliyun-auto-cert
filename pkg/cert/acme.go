@@ -163,6 +163,14 @@ func (c *Client) LoadAccount(ctx context.Context, file string) error {
 	return nil
 }
 
+func (c *Client) AccountKeyRollover(ctx context.Context) error {
+	priv, _, err := generateKey(KeyECDSA)
+	if err != nil {
+		return err
+	}
+	return c.c.AccountKeyRollover(ctx, priv)
+}
+
 // ExportAccount export the account information to bytes in JSON format
 func (c *Client) ExportAccount(ctx context.Context) ([]byte, error) {
 	key, ok := c.c.Key.(*ecdsa.PrivateKey)
