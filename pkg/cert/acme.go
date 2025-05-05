@@ -11,13 +11,17 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding"
+	"encoding/asn1"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -30,6 +34,16 @@ import (
 type Client struct {
 	cache autocert.DirCache
 	c     acme.Client
+}
+
+type RenewalInfoWindow struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+type RenewInfo struct {
+	SuggestedWindow RenewalInfoWindow `json:"suggestedWindow"`
+	ExplanationURL  string            `json:"explanationURL"`
 }
 
 const (
@@ -236,6 +250,65 @@ func GetDNS01ChallengeRecord(subDomain string) string {
 
 func GetHTTP01ChallengePath(token string) string {
 	return "/.well-known/acme-challenge/" + token
+}
+
+func (c *Client) GetRenewInfo(ctx context.Context, leaf *x509.Certificate) (*RenewInfo, error) {
+	ariCertId, err := makeARICertID(leaf)
+	if err != nil {
+		return nil, err
+	}
+
+	directory, err := c.c.Discover(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := url.Parse(directory.RenewalInfo)
+	if err != nil {
+		return nil, err
+	}
+	u.Path = path.Join(u.Path, ariCertId)
+	resp, err := c.c.HTTPClient.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	ri := &RenewInfo{}
+	if err := json.NewDecoder(resp.Body).Decode(&ri); err != nil {
+		return nil, err
+	}
+	return ri, nil
+}
+
+// ref: https://letsencrypt.org/2024/04/25/guide-to-integrating-ari-into-existing-acme-clients/#step-3-constructing-the-ari-certid
+func makeARICertID(leaf *x509.Certificate) (string, error) {
+	if leaf == nil {
+		return "", errors.New("leaf certificate is nil")
+	}
+
+	// Marshal the Serial Number into DER.
+	der, err := asn1.Marshal(leaf.SerialNumber)
+	if err != nil {
+		return "", err
+	}
+
+	// Check if the DER encoded bytes are sufficient (at least 3 bytes: tag,
+	// length, and value).
+	if len(der) < 3 {
+		return "", errors.New("invalid DER encoding of serial number")
+	}
+
+	// Extract only the integer bytes from the DER encoded Serial Number
+	// Skipping the first 2 bytes (tag and length). The result is base64url
+	// encoded without padding.
+	serial := base64.RawURLEncoding.EncodeToString(der[2:])
+
+	// Convert the Authority Key Identifier to base64url encoding without
+	// padding.
+	aki := base64.RawURLEncoding.EncodeToString(leaf.AuthorityKeyId)
+
+	// Construct the final identifier by concatenating AKI and Serial Number.
+	return fmt.Sprintf("%s.%s", aki, serial), nil
 }
 
 func (c *Client) GenerateCert(ctx context.Context, domain string, keyType KeyType, processChallenge ProcessChallenge) (ce *Cert, err error) {
