@@ -1,12 +1,6 @@
 package main
 
 import (
-	"auto-cert/pkg/cdn"
-	"auto-cert/pkg/cert"
-	"auto-cert/pkg/dns"
-	"auto-cert/pkg/env"
-	"auto-cert/pkg/ref"
-	"auto-cert/pkg/tld"
 	"context"
 	"flag"
 	"fmt"
@@ -14,6 +8,13 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"auto-cert/pkg/cdn"
+	"auto-cert/pkg/cert"
+	"auto-cert/pkg/dns"
+	"auto-cert/pkg/env"
+	"auto-cert/pkg/ref"
+	"auto-cert/pkg/tld"
 
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	"golang.org/x/crypto/acme"
@@ -46,7 +47,7 @@ func main() {
 	flag.StringVar(&cfg.email, "e", env.GetString("EMAIL", ""), "email for acme account")
 	flag.StringVar(&cfg.fullDomain, "fd", env.GetString("FULL_DOMAIN", ""), "the full domain to generate certificate")
 	flag.StringVar(&cfg.tldPlusOne, "tp", env.GetString("TLD_PLUS_ONE", ""), "tld plus one")
-	flag.StringVar(&cfg.accountPath, "ap", env.GetString("ACCOUNT_FILE", "./account.json"), "account file path")
+	flag.StringVar(&cfg.accountPath, "ap", env.GetString("ACCOUNT_FILE", "./account.json"), "account file path, it can also be the environment variable (format: `env:ENV_NAME`) which contains the account information")
 	flag.BoolVar(&mustLoadAccount, "m", env.GetBool("MUST_LOAD_ACCOUNT", false), "must load account")
 	flag.StringVar(&cfg.accessKey, "ak", env.GetString("ACCESS_KEY", ""), "access key")
 	flag.StringVar(&cfg.accessSecret, "sk", env.GetString("ACCESS_SECRET", ""), "access secret")
@@ -153,12 +154,12 @@ func parseSubDomain(cfg *config) string {
 	}
 
 	if !strings.HasSuffix(cfg.fullDomain, cfg.tldPlusOne) {
-		log.Fatalf("full domain %q is not match with domain %q\n", cfg.fullDomain, cfg.tldPlusOne)
+		log.Fatalf("full domain %q is not match with domain %q", cfg.fullDomain, cfg.tldPlusOne)
 	}
 	subDomain := cfg.fullDomain[:len(cfg.fullDomain)-len(cfg.tldPlusOne)-1]
 	// now, the subDomain should be end with a dot or empty
 	if subDomain != "" && !strings.HasSuffix(subDomain, ".") {
-		log.Fatalf("full domain %q is not match with domain %q\n", cfg.fullDomain, cfg.tldPlusOne)
+		log.Fatalf("full domain %q is not match with domain %q", cfg.fullDomain, cfg.tldPlusOne)
 	}
 	return strings.TrimSuffix(subDomain, ".")
 }

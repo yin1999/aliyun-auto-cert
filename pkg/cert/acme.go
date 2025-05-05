@@ -1,7 +1,6 @@
 package cert
 
 import (
-	"auto-cert/pkg/tld"
 	"bytes"
 	"context"
 	"crypto"
@@ -21,6 +20,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"auto-cert/pkg/tld"
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
