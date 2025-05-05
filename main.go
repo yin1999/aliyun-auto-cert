@@ -39,7 +39,9 @@ func main() {
 	var (
 		forceRenew        = false
 		createAcmeAccount = false
-		mustLoadAccount   bool
+		ctx               = context.Background()
+
+		mustLoadAccount bool
 	)
 	cfg := &config{}
 	flag.BoolVar(&forceRenew, "f", false, "force renew")
@@ -57,9 +59,14 @@ func main() {
 	}
 	if createAcmeAccount {
 		// check if account exists
-		log.Println("creating acme account")
 		acmeCli := cert.NewClient()
-		err := createAndStoreAcmeAccount(context.Background(), acmeCli, cfg)
+		if err := acmeCli.LoadAccount(ctx, cfg.accountPath); err == nil {
+			log.Print("acme account exists, skip creating acme account\n")
+			return
+		}
+
+		log.Print("creating acme account\n")
+		err := createAndStoreAcmeAccount(ctx, acmeCli, cfg)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -94,13 +101,12 @@ func main() {
 	}
 
 	acmeCli := cert.NewClient()
-	ctx := context.Background()
 	err = acmeCli.LoadAccount(ctx, cfg.accountPath)
 	if err != nil {
 		if mustLoadAccount {
 			log.Fatalf("load account failed: %v", err)
 		}
-		log.Printf("account not found (%s), register it", err.Error())
+		log.Printf("account not found (%v), register it\n", err)
 		err = createAndStoreAcmeAccount(ctx, acmeCli, cfg)
 		if err != nil {
 			log.Fatal(err)
@@ -117,12 +123,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("set certificate failed: %v", err)
 	}
-	log.Printf("certificate set")
+	log.Print("certificate set\n")
 }
 
 func shouldRenewCert(cdnCli *cdn.Client, forceRenew bool, cfg *config) bool {
 	if forceRenew {
-		log.Print("force renew the certificate")
+		log.Print("force renew the certificate\n")
 		return true
 	}
 	certInfo, err := cdnCli.QueryDomainCertificate(cfg.fullDomain)
@@ -131,14 +137,14 @@ func shouldRenewCert(cdnCli *cdn.Client, forceRenew bool, cfg *config) bool {
 	}
 	duration := time.Until(certInfo.ExpireTime)
 	if duration > RenewBefore {
-		log.Printf("certificate is not expired, skip renew")
+		log.Print("certificate is not expired, skip renew\n")
 		return false
 	}
 
 	if duration <= 0 {
-		log.Printf("certificate is expired, renew it")
+		log.Print("certificate is expired, renew it\n")
 	} else {
-		log.Printf("certificate will be expired in %v, renew it", duration)
+		log.Printf("certificate will be expired in %v, renew it\n", duration)
 	}
 	return true
 }
