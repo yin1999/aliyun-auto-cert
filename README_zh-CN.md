@@ -48,9 +48,10 @@ After=network-online.target
 
 [Service]
 EnvironmentFile=/path/to/.env
+Environment=ACCOUNT_FILE=%d/account.json
 # 使用动态用户账号来增强安全性
 DynamicUser=yes
-ExecStart=/bin/bash -c 'ACCOUNT_FILE="${CREDENTIALS_DIRECTORY}/account.json" /path/to/auto-cert'
+ExecStart=/path/to/auto-cert
 LoadCredential=account.json:/path/to/acme-account.json # 应该在设置服务前运行程序来自动生成 acme 账号文件
 Type=simple
 
