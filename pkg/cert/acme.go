@@ -1,7 +1,6 @@
 package cert
 
 import (
-	"auto-cert/pkg/tld"
 	"bytes"
 	"context"
 	"crypto"
@@ -21,6 +20,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"auto-cert/pkg/tld"
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
@@ -162,28 +163,34 @@ func (c *Client) LoadAccount(ctx context.Context, file string) error {
 	return nil
 }
 
-// StoreAccount stores the account information to the file in JSON format
-// the file will be created with 0600 permission
-func (c *Client) StoreAccount(ctx context.Context, file string) error {
-	key, ok := c.c.Key.(*ecdsa.PrivateKey)
-	if !ok {
-		return errors.New("unsupported key type")
-	}
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+func (c *Client) AccountKeyRollover(ctx context.Context) error {
+	priv, _, err := generateKey(KeyECDSA)
 	if err != nil {
 		return err
 	}
+	return c.c.AccountKeyRollover(ctx, priv)
+}
 
-	defer f.Close()
+// ExportAccount export the account information to bytes in JSON format
+func (c *Client) ExportAccount(ctx context.Context) ([]byte, error) {
+	key, ok := c.c.Key.(*ecdsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("unsupported key type")
+	}
 
 	account := accountInfo{
 		Key: privateKeyWrapper(*key),
 		Kid: c.c.KID,
 	}
-	enc := json.NewEncoder(f)
+
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
 	enc.SetIndent("", "  ")
 
-	return enc.Encode(account)
+	if err := enc.Encode(account); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (c *Client) RegisterAccount(ctx context.Context, email string) error {

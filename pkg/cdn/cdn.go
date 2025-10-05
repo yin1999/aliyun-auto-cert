@@ -1,10 +1,11 @@
 package cdn
 
 import (
-	"auto-cert/pkg/cert"
-	"auto-cert/pkg/ref"
 	"errors"
 	"time"
+
+	"auto-cert/pkg/cert"
+	"auto-cert/pkg/ref"
 
 	aliCdn "github.com/alibabacloud-go/cdn-20180510/v5/client"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
