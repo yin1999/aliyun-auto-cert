@@ -1,14 +1,14 @@
 module auto-cert
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/alibabacloud-go/alidns-20150109/v4 v4.6.0
 	github.com/alibabacloud-go/cdn-20180510/v5 v5.2.2
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.12
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.7
-	golang.org/x/crypto v0.45.0
-	golang.org/x/net v0.47.0
+	golang.org/x/crypto v0.53.0
+	golang.org/x/net v0.56.0
 )
 
 require (
@@ -23,6 +23,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
